@@ -1,390 +1,225 @@
 # CodeLevelUp
 
-中文 | [English](#english)
+CodeLevelUp is a local code upgrade assistant packaged as an agent skill, a CLI,
+and a stdio MCP server. It helps an agent inspect a repository, locate code,
+plan a small upgrade, run local verification, and prepare an intentional commit.
 
-CodeLevelUp 是一个项目级 Codex skill，用于在本地代码自升级前先建立代码知识图谱，帮助 agent 更好地理解代码结构、调用关系、影响范围和验证路径。它参考了本地 GitNexus skills 的工作方式，以及 [abhigyanpatwari/GitNexus](https://github.com/abhigyanpatwari/GitNexus) 的知识图谱理念：先索引，再理解，再修改，最后验证并提交。
+CodeLevelUp 是一个本地代码自升级助手，提供 agent skill、CLI 和 stdio MCP
+三种入口。它用于帮助智能体检查仓库、定位代码、规划小步升级、在本地验证，并准备
+有边界的提交。
 
-## 项目目标
+## What It Provides / 能力范围
 
-CodeLevelUp 的目标不是替代 GitNexus，而是把 GitNexus 的代码图谱能力组织成一个可复用的 Codex skill 工作流。它让 agent 在处理本地代码升级、漏洞修复、依赖现代化、API 迁移、质量改进时，优先通过知识图谱理解代码，再做小步修改。
+- Agent skill instructions for code upgrade workflows.
+- Local CLI commands for project probing, code search, and upgrade preparation.
+- A stdio MCP server that Claude Desktop, Claude Code, Codex, or other MCP
+  clients can call locally.
+- Repository probing for Python, Node, Go, and Rust projects.
+- Local verification command discovery.
+- Security audit command suggestions.
+- A strict local-first workflow: dependencies and generated state stay inside
+  the target project sandbox.
 
-适用场景：
+- 面向代码升级工作流的 agent skill 说明。
+- 面向项目探测、代码定位和升级准备的本地 CLI。
+- 可被 Claude Desktop、Claude Code、Codex 或其他 MCP 客户端本地调用的 stdio
+  MCP 服务。
+- 支持探测 Python、Node、Go、Rust 项目。
+- 自动发现本地验证命令。
+- 给出安全扫描命令建议。
+- 坚持本地优先：依赖和生成状态只放在目标项目的沙盒中。
 
-- 给本地代码建立或刷新 GitNexus 知识图谱。
-- 让 agent 快速理解代码结构、模块边界和执行流程。
-- 在修改代码前核查影响范围和调用链。
-- 修复安全漏洞或升级依赖时确认受影响代码路径。
-- 基于本地测试、lint、安全扫描结果进行验证。
-- 让 agent 只提交经过验证的窄范围改动。
+## Install / 安装
 
-## 项目结构
+From this project directory:
+
+在当前项目目录执行：
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
+```
+
+After installation:
+
+安装后可直接使用：
+
+```bash
+codelevelup --help
+codelevelup-mcp
+```
+
+The scripts also work without installation:
+
+也可以不安装，直接运行脚本：
+
+```bash
+python scripts/codelevelup.py --help
+python scripts/codelevelup_mcp.py
+```
+
+## CLI / 命令行
+
+Probe a target repository:
+
+探测目标仓库：
+
+```bash
+codelevelup probe --json /path/to/repo
+```
+
+Search local source files:
+
+搜索本地源码：
+
+```bash
+codelevelup search /path/to/repo "target_symbol" --json
+```
+
+## MCP / MCP 接入
+
+Run the local stdio MCP server:
+
+运行本地 stdio MCP 服务：
+
+```bash
+codelevelup-mcp
+```
+
+For Claude Desktop, copy and edit:
+
+Claude Desktop 可参考并修改：
+
+```text
+mcp/claude_desktop_config.example.json
+```
+
+Available MCP tools:
+
+可用 MCP 工具：
+
+- `probe_project`
+- `search_code`
+
+Additional code-search index tools are described in the next section.
+
+额外的代码搜寻索引工具见下一节。
+
+## Code Search / 代码搜寻
+
+The code search part references GitNexus-style graph-backed code location: first
+find the relevant files and symbols, then read source and check impact before
+editing. CodeLevelUp does not vendor GitNexus and is not a GitNexus fork. When a
+target repository already has GitNexus or you allow installing it in that
+project sandbox, CodeLevelUp can discover or preview:
+
+代码搜寻部分参考 GitNexus 的图谱化代码定位思路：先定位相关文件和符号，再阅读源码
+并检查影响范围，然后再修改。CodeLevelUp 不内置 GitNexus，也不是 GitNexus 的 fork。
+如果目标仓库已经配置 GitNexus，或你允许在该项目沙盒中安装它，CodeLevelUp 可以发现
+或预览：
+
+```bash
+codelevelup gitnexus status /path/to/repo --json
+codelevelup gitnexus analyze /path/to/repo --pdg --dry-run --json
+```
+
+MCP exposes the same optional code-search index helpers:
+
+MCP 也暴露同样的可选代码搜寻索引辅助工具：
+
+- `gitnexus_status`
+- `gitnexus_analyze_command`
+
+If that tooling is unavailable, use the built-in literal search and normal file
+reads, then state that no graph-backed audit was run.
+
+如果该工具不可用，就使用内置字面量搜索和普通文件阅读，并明确说明没有运行图谱审计。
+
+## Project Structure / 项目结构
 
 ```text
 CodeLevelUp/
 ├── README.md
 ├── SKILL.md
+├── AGENTS.md
+├── CLAUDE.md
+├── pyproject.toml
 ├── agents/
 │   └── openai.yaml
+├── mcp/
+│   └── claude_desktop_config.example.json
 ├── references/
-│   ├── gitnexus-workflow.md
+│   ├── code-search-workflow.md
 │   └── upgrade-loop.md
 ├── scripts/
+│   ├── codelevelup.py
+│   ├── codelevelup_mcp.py
 │   ├── probe_project.py
+│   ├── test_cli_mcp.py
 │   └── test_probe_project.py
 └── .gitignore
 ```
 
-### 根目录
+- `SKILL.md`: agent-facing workflow contract.
+- `AGENTS.md`: portable agent instructions.
+- `CLAUDE.md`: Claude-specific CLI and MCP notes.
+- `pyproject.toml`: editable local install and console entry points.
+- `scripts/codelevelup.py`: local CLI implementation.
+- `scripts/codelevelup_mcp.py`: stdio MCP server implementation.
+- `scripts/probe_project.py`: project ecosystem and command detector.
+- `references/code-search-workflow.md`: optional graph-backed code search notes.
+- `references/upgrade-loop.md`: upgrade, verification, and commit loop.
+- `mcp/claude_desktop_config.example.json`: Claude Desktop MCP example.
 
-| 路径 | 作用 |
-| --- | --- |
-| `README.md` | 项目说明文档，包含中英双语介绍、目录结构、安装、使用和验证方式。 |
-| `SKILL.md` | Codex skill 的核心入口。包含 skill 名称、触发描述、工作契约、GitNexus 优先流程、使用模式和停止条件。 |
-| `.gitignore` | 忽略 Python 缓存、虚拟环境、GitNexus 本地索引、Node 依赖和构建产物。 |
+- `SKILL.md`：面向 agent 的工作流约束。
+- `AGENTS.md`：跨 agent 的通用说明。
+- `CLAUDE.md`：Claude 使用 CLI 和 MCP 的说明。
+- `pyproject.toml`：本地 editable 安装和命令入口。
+- `scripts/codelevelup.py`：本地 CLI 实现。
+- `scripts/codelevelup_mcp.py`：stdio MCP 服务实现。
+- `scripts/probe_project.py`：项目生态和命令探测器。
+- `references/code-search-workflow.md`：可选的图谱化代码搜寻说明。
+- `references/upgrade-loop.md`：升级、验证和提交循环。
+- `mcp/claude_desktop_config.example.json`：Claude Desktop MCP 配置示例。
 
-### `agents/`
+## Validation / 验证
 
-`agents/` 保存 Codex UI 或运行时使用的 skill 元数据。
+Run the project checks:
 
-| 路径 | 作用 |
-| --- | --- |
-| `agents/openai.yaml` | 定义显示名称 `CodeLevelUp`、简短描述、默认调用提示和是否允许隐式触发。 |
-
-### `references/`
-
-`references/` 存放按需读取的长流程说明。这样 `SKILL.md` 可以保持精简，agent 只有在需要时才加载细节。
-
-| 路径 | 作用 |
-| --- | --- |
-| `references/gitnexus-workflow.md` | 说明如何安装、初始化、刷新和使用 GitNexus 图谱；包含 `analyze`、`status`、`--pdg`、MCP 资源和图谱查询工具。 |
-| `references/upgrade-loop.md` | 说明完整代码升级循环：快照、图谱理解、研究、补丁、验证和提交。 |
-
-### `scripts/`
-
-`scripts/` 存放确定性辅助脚本。脚本默认只做静态探测，不联网、不安装依赖、不修改目标项目。
-
-| 路径 | 作用 |
-| --- | --- |
-| `scripts/probe_project.py` | 探测目标仓库生态、manifest、lockfile、验证命令、安全扫描命令和 GitNexus 状态。输出 JSON 或人类可读报告。 |
-| `scripts/test_probe_project.py` | `probe_project.py` 的单元测试，覆盖 Python、Node、Go、Rust 和 GitNexus runner/index 检测。 |
-
-## Skill 名称与调用
-
-Codex skill 的触发名使用小写连字符形式：
-
-```text
-$code-level-up
-```
-
-UI 展示名和 GitHub 项目名使用：
-
-```text
-CodeLevelUp
-```
-
-示例调用：
-
-```text
-Use $code-level-up to inspect this repo with GitNexus, plan an upgrade, verify it, and commit.
-```
-
-## 工作流
-
-### 1. 探测项目
-
-在目标仓库运行：
-
-```bash
-python /path/to/CodeLevelUp/scripts/probe_project.py --json /path/to/target-repo
-```
-
-脚本会输出：
-
-- 检测到的语言生态，例如 Python、Node、Go、Rust。
-- manifest 和 lockfile，例如 `pyproject.toml`、`package.json`、`Cargo.toml`。
-- 推荐的安装命令。
-- 推荐的验证命令，例如 `python -m pytest`、`python -m ruff check .`。
-- 推荐的安全扫描命令，例如 `python -m pip_audit`、`pnpm audit`、`cargo audit`。
-- GitNexus runner 是否存在。
-- GitNexus index 是否存在。
-- GitNexus bootstrap 命令和 MCP 资源入口。
-
-### 2. 建立 GitNexus 知识图谱
-
-如果目标仓库还没有 `.gitnexus/run.cjs`：
-
-```bash
-npx gitnexus analyze
-```
-
-如果已经有 runner：
-
-```bash
-node .gitnexus/run.cjs status
-node .gitnexus/run.cjs analyze
-```
-
-需要控制流、数据流或 taint 分析时：
-
-```bash
-node .gitnexus/run.cjs analyze --pdg
-```
-
-### 3. 让 agent 通过图谱理解代码
-
-优先读取：
-
-```text
-gitnexus://repo/{name}/context
-gitnexus://repo/{name}/clusters
-gitnexus://repo/{name}/processes
-gitnexus://repo/{name}/schema
-```
-
-常用工具：
-
-```text
-query
-context
-impact
-trace
-detect_changes
-check
-explain
-pdg_query
-```
-
-### 4. 修改、验证、提交
-
-CodeLevelUp 推荐每次只做一个窄范围改动：
-
-1. 记录当前 `git status --short`。
-2. 用 GitNexus 查询相关模块、符号、流程和影响范围。
-3. 修改最小必要文件。
-4. 运行探测脚本推荐的测试、lint、build 或安全扫描。
-5. 只 stage 本次改动文件。
-6. 提交时在 commit body 中写明 GitNexus 证据和验证命令。
-
-## 本地验证
-
-在 CodeLevelUp 仓库根目录运行：
+运行项目检查：
 
 ```bash
 python scripts/test_probe_project.py
+python scripts/test_cli_mcp.py
 python /Users/olym/.codex/skills/.system/skill-creator/scripts/quick_validate.py .
-python scripts/probe_project.py --json /Users/olym/Documents/resume_project
 ```
 
-## 与 GitNexus 的关系
+Smoke test CLI and MCP locally:
 
-CodeLevelUp 不是 GitNexus 的 fork，也不包含 GitNexus 源码。它是一个围绕 GitNexus 使用方式设计的 Codex skill 项目：
-
-- GitNexus 负责生成和查询代码知识图谱。
-- CodeLevelUp 负责告诉 agent 何时建立图谱、如何使用图谱、如何结合验证和提交完成本地代码升级。
-
-参考项目：
-
-- [abhigyanpatwari/GitNexus](https://github.com/abhigyanpatwari/GitNexus)
-
----
-
-## English
-
-CodeLevelUp is a project-local Codex skill for upgrading local codebases with a
-GitNexus-first knowledge graph workflow. It helps an agent understand repository
-structure, module boundaries, execution flows, impact radius, and verification
-paths before making code changes.
-
-It is inspired by the local GitNexus skills and by the
-[abhigyanpatwari/GitNexus](https://github.com/abhigyanpatwari/GitNexus) project:
-index first, understand the graph, patch narrowly, verify locally, then commit.
-
-## Project Goals
-
-CodeLevelUp does not replace GitNexus. It packages a GitNexus-oriented workflow
-as a reusable Codex skill so agents can use graph-backed code intelligence during
-local upgrades, security fixes, dependency modernization, API migrations, and
-quality improvements.
-
-Use it to:
-
-- Build or refresh a GitNexus knowledge graph for a local repository.
-- Help an agent understand architecture, module boundaries, and execution flows.
-- Check impact radius and call chains before editing code.
-- Confirm affected paths when fixing vulnerabilities or upgrading dependencies.
-- Run local tests, lint checks, builds, and security scans.
-- Commit only narrow, verified changes.
-
-## Project Structure
-
-```text
-CodeLevelUp/
-├── README.md
-├── SKILL.md
-├── agents/
-│   └── openai.yaml
-├── references/
-│   ├── gitnexus-workflow.md
-│   └── upgrade-loop.md
-├── scripts/
-│   ├── probe_project.py
-│   └── test_probe_project.py
-└── .gitignore
-```
-
-### Root
-
-| Path | Purpose |
-| --- | --- |
-| `README.md` | Bilingual project documentation with structure, installation, usage, and validation notes. |
-| `SKILL.md` | Main Codex skill entrypoint with frontmatter, operating contract, GitNexus-first workflow, modes, and stop conditions. |
-| `.gitignore` | Ignores Python caches, virtual environments, local GitNexus indexes, Node dependencies, and build outputs. |
-
-### `agents/`
-
-`agents/` stores runtime and UI metadata for the skill.
-
-| Path | Purpose |
-| --- | --- |
-| `agents/openai.yaml` | Defines display name `CodeLevelUp`, short description, default prompt, and implicit invocation policy. |
-
-### `references/`
-
-`references/` contains longer instructions loaded only when needed. This keeps
-`SKILL.md` compact while still giving the agent detailed procedures.
-
-| Path | Purpose |
-| --- | --- |
-| `references/gitnexus-workflow.md` | Explains how to bootstrap, refresh, and use GitNexus graphs, including `analyze`, `status`, `--pdg`, MCP resources, and graph tools. |
-| `references/upgrade-loop.md` | Describes the full upgrade loop: snapshot, graph orientation, research, patch, verify, and commit. |
-
-### `scripts/`
-
-`scripts/` contains deterministic helper scripts. By default they only inspect
-the target repository. They do not install dependencies, access the network, or
-modify the target project.
-
-| Path | Purpose |
-| --- | --- |
-| `scripts/probe_project.py` | Detects ecosystems, manifests, lockfiles, verification commands, security scan commands, and GitNexus runner/index state. |
-| `scripts/test_probe_project.py` | Unit tests for `probe_project.py`, covering Python, Node, Go, Rust, and GitNexus runner/index detection. |
-
-## Skill Name And Invocation
-
-The Codex-compatible skill trigger is:
-
-```text
-$code-level-up
-```
-
-The UI and GitHub project name is:
-
-```text
-CodeLevelUp
-```
-
-Example prompt:
-
-```text
-Use $code-level-up to inspect this repo with GitNexus, plan an upgrade, verify it, and commit.
-```
-
-## Workflow
-
-### 1. Probe The Project
-
-Run this from anywhere:
+本地烟测 CLI 和 MCP：
 
 ```bash
-python /path/to/CodeLevelUp/scripts/probe_project.py --json /path/to/target-repo
+codelevelup probe --json /path/to/repo
+codelevelup search /path/to/repo "CodeLevelUp" --json
+codelevelup-mcp
 ```
 
-The script reports:
+## Upgrade Discipline / 升级纪律
 
-- detected ecosystems such as Python, Node, Go, or Rust;
-- manifests and lockfiles such as `pyproject.toml`, `package.json`, or `Cargo.toml`;
-- recommended setup commands;
-- recommended verification commands such as `python -m pytest` or `python -m ruff check .`;
-- recommended security scan commands such as `python -m pip_audit`, `pnpm audit`, or `cargo audit`;
-- whether a GitNexus runner exists;
-- whether a GitNexus index exists;
-- GitNexus bootstrap commands and MCP resource entrypoints.
+1. Inspect `git status --short` before editing.
+2. Probe the target repository.
+3. Locate relevant code and read source before patching.
+4. Make one scoped change.
+5. Run detected verification commands.
+6. Stage explicit files only.
+7. Commit with the reason and verification result.
 
-### 2. Build The GitNexus Knowledge Graph
-
-If the target repository does not have `.gitnexus/run.cjs`:
-
-```bash
-npx gitnexus analyze
-```
-
-If the runner already exists:
-
-```bash
-node .gitnexus/run.cjs status
-node .gitnexus/run.cjs analyze
-```
-
-For control-flow, data-flow, or taint analysis:
-
-```bash
-node .gitnexus/run.cjs analyze --pdg
-```
-
-### 3. Understand Code Through The Graph
-
-Start with:
-
-```text
-gitnexus://repo/{name}/context
-gitnexus://repo/{name}/clusters
-gitnexus://repo/{name}/processes
-gitnexus://repo/{name}/schema
-```
-
-Common tools:
-
-```text
-query
-context
-impact
-trace
-detect_changes
-check
-explain
-pdg_query
-```
-
-### 4. Patch, Verify, Commit
-
-CodeLevelUp encourages one narrow change at a time:
-
-1. Record `git status --short`.
-2. Use GitNexus to inspect related modules, symbols, flows, and impact radius.
-3. Edit the smallest necessary set of files.
-4. Run the tests, lint checks, builds, or security scans recommended by the probe.
-5. Stage only the files changed for this run.
-6. Include GitNexus evidence and verification commands in the commit body.
-
-## Local Validation
-
-Run from the CodeLevelUp repository root:
-
-```bash
-python scripts/test_probe_project.py
-python /Users/olym/.codex/skills/.system/skill-creator/scripts/quick_validate.py .
-python scripts/probe_project.py --json /Users/olym/Documents/resume_project
-```
-
-## Relationship To GitNexus
-
-CodeLevelUp is not a GitNexus fork and does not vendor GitNexus source code. It
-is a Codex skill project designed around the GitNexus workflow:
-
-- GitNexus builds and queries the code knowledge graph.
-- CodeLevelUp tells the agent when to build the graph, how to use it, and how to
-  combine graph evidence with local verification and commits.
-
-Reference project:
-
-- [abhigyanpatwari/GitNexus](https://github.com/abhigyanpatwari/GitNexus)
+1. 修改前先检查 `git status --short`。
+2. 探测目标仓库。
+3. 先定位相关代码并阅读源码，再打补丁。
+4. 每次只做一个边界清晰的改动。
+5. 运行发现到的验证命令。
+6. 只暂存明确需要提交的文件。
+7. 提交信息写清原因和验证结果。

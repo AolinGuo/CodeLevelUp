@@ -110,11 +110,17 @@ def detect_python(root: Path, report: dict[str, Any]) -> None:
     if pyproject.exists():
         add_manifest(report, "pyproject.toml")
         text = pyproject.read_text(encoding="utf-8", errors="ignore")
+        install_target = '".[dev]"' if has_dev_extra(text) else "."
+        install_reason = (
+            "Install editable project and dev dependencies in a local virtual environment."
+            if install_target == '".[dev]"'
+            else "Install editable project in a local virtual environment."
+        )
         add_command(
             report,
             "setup_commands",
-            "python -m venv .venv && . .venv/bin/activate && python -m pip install -e \".[dev]\"",
-            "Install editable project and dev dependencies in a local virtual environment.",
+            f"python -m venv .venv && . .venv/bin/activate && python -m pip install -e {install_target}",
+            install_reason,
         )
         if "pytest" in text or "[tool.pytest" in text:
             add_command(report, "verification_commands", "python -m pytest", "Run Python tests.")
@@ -222,6 +228,10 @@ def detect_node_manager(root: Path) -> str:
     if (root / "bun.lockb").exists():
         return "bun"
     return "npm"
+
+
+def has_dev_extra(pyproject_text: str) -> bool:
+    return "[project.optional-dependencies]" in pyproject_text and "dev =" in pyproject_text
 
 
 def read_package_scripts(package_json: Path) -> dict[str, str]:
