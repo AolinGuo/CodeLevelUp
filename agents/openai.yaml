@@ -1,7 +1,7 @@
 interface:
   display_name: "CodeLevelUp"
-  short_description: "Level up code with GitNexus graphs"
-  default_prompt: "Use $code-level-up to inspect this repo with GitNexus, plan an upgrade, verify it, and commit."
+  short_description: "Level up local code with CLI and MCP support"
+  default_prompt: "Use $code-level-up to inspect this repo, locate the relevant code, plan a small upgrade, verify it locally, and commit."
 
 policy:
   allow_implicit_invocation: true

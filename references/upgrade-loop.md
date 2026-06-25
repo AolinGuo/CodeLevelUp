@@ -8,14 +8,15 @@ Use this loop for each CodeLevelUp run.
 - Run `python scripts/probe_project.py --json <target_repo>` when outside the
   target repo, or `python scripts/probe_project.py --json` from the target repo
   if the script is available there.
-- Record manifests, lockfiles, verification commands, and GitNexus status.
+- Record manifests, lockfiles, verification commands, and local index status.
 
-## 2. Graph Orientation
+## 2. Code Orientation
 
-- Bootstrap or refresh GitNexus.
-- Read repository context.
-- Query clusters, processes, and symbols related to the requested change.
-- For existing diffs, run `detect_changes` and inspect affected flows.
+- Use `python scripts/codelevelup.py search <target_repo> <query> --json` to
+  locate relevant source files.
+- Read source files directly before editing.
+- When graph-backed tooling is available, refresh the index and inspect context,
+  affected symbols, and changed flows.
 
 ## 3. Research
 
@@ -45,8 +46,8 @@ Stage explicit paths only. Use a commit body with:
 Why:
 - <upgrade reason>
 
-GitNexus:
-- <context/impact/detect_changes evidence or fallback note>
+Code search:
+- <source files, graph evidence, or fallback note>
 
 Verification:
 - <command>: <result>

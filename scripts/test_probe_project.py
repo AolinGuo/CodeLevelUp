@@ -41,6 +41,10 @@ line-length = 100
             report = probe.probe_project(root)
 
         self.assertIn("python", report["ecosystems"])
+        self.assertIn(
+            'python -m venv .venv && . .venv/bin/activate && python -m pip install -e ".[dev]"',
+            command_strings(report, "setup_commands"),
+        )
         self.assertIn("python -m pytest", command_strings(report, "verification_commands"))
         self.assertIn("python -m ruff check .", command_strings(report, "verification_commands"))
         self.assertIn("python -m pip_audit", command_strings(report, "security_commands"))
@@ -48,6 +52,22 @@ line-length = 100
         self.assertFalse(report["gitnexus"]["index_present"])
         self.assertEqual("npx gitnexus analyze", report["gitnexus"]["bootstrap_command"])
         self.assertIn("gitnexus://repo/{name}/context", report["gitnexus"]["mcp_resources"])
+
+    def test_python_setup_command_omits_missing_dev_extra(self):
+        probe = load_probe_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "pyproject.toml").write_text(
+                "[project]\nname = \"demo\"\ndependencies = []\n",
+                encoding="utf-8",
+            )
+
+            report = probe.probe_project(root)
+
+        self.assertIn(
+            "python -m venv .venv && . .venv/bin/activate && python -m pip install -e .",
+            command_strings(report, "setup_commands"),
+        )
 
     def test_detects_existing_gitnexus_runner_and_index(self):
         probe = load_probe_module()
