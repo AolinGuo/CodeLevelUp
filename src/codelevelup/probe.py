@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Probe a repository and suggest setup, verification, security, and GitNexus commands."""
+"""Probe a repository and suggest setup, verification, security, and graph state."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import logging
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 LOCKFILES = [
@@ -21,14 +24,6 @@ LOCKFILES = [
     "Cargo.lock",
     "go.sum",
 ]
-
-GITNEXUS_INDEX_MARKERS = [
-    "graph.json",
-    "graph.db",
-    "index.json",
-    "registry.json",
-]
-
 
 def probe_project(root: Path) -> dict[str, Any]:
     root = root.resolve()
@@ -51,7 +46,8 @@ def probe_project(root: Path) -> dict[str, Any]:
                 "a freshly-created local .venv, a container, or another explicit sandbox."
             ),
         },
-        "gitnexus": build_gitnexus_report(root),
+        "codelevelup": build_codelevelup_report(root),
+        "code_graph": build_code_graph_report(root),
     }
 
     detect_python(root, report)
@@ -64,39 +60,22 @@ def probe_project(root: Path) -> dict[str, Any]:
     return report
 
 
-def build_gitnexus_report(root: Path) -> dict[str, Any]:
-    gitnexus_dir = root / ".gitnexus"
-    runner = gitnexus_dir / "run.cjs"
-    index_present = gitnexus_dir.exists() and any((gitnexus_dir / name).exists() for name in GITNEXUS_INDEX_MARKERS)
+def build_codelevelup_report(root: Path) -> dict[str, Any]:
     return {
-        "runner_present": runner.exists(),
-        "index_present": index_present,
-        "bootstrap_command": "npx gitnexus analyze",
-        "commands": [
-            {"command": "node .gitnexus/run.cjs status", "reason": "Check GitNexus index freshness."},
-            {"command": "node .gitnexus/run.cjs analyze", "reason": "Build or refresh the code knowledge graph."},
-            {
-                "command": "node .gitnexus/run.cjs analyze --pdg",
-                "reason": "Build taint, control-dependence, and data-dependence layers.",
-            },
-            {"command": "node .gitnexus/run.cjs wiki", "reason": "Generate graph-backed repository documentation."},
-        ],
-        "mcp_resources": [
-            "gitnexus://repo/{name}/context",
-            "gitnexus://repo/{name}/clusters",
-            "gitnexus://repo/{name}/processes",
-            "gitnexus://repo/{name}/schema",
-        ],
-        "mcp_tools": [
-            "query",
-            "context",
-            "impact",
-            "trace",
-            "detect_changes",
-            "check",
-            "explain",
-            "pdg_query",
-        ],
+        "state_dir": ".codelevelup",
+        "state_present": (root / ".codelevelup").exists(),
+        "runs_dir": ".codelevelup/runs",
+        "policy_file": ".codelevelup/policy.yaml",
+    }
+
+
+def build_code_graph_report(root: Path) -> dict[str, Any]:
+    graph_dir = root / ".codelevelup" / "graph"
+    graph_json = graph_dir / "graph.json"
+    return {
+        "graph_dir": ".codelevelup/graph",
+        "graph_present": graph_json.exists(),
+        "graph_file": ".codelevelup/graph/graph.json",
     }
 
 
@@ -203,7 +182,7 @@ def detect_rust(root: Path, report: dict[str, Any]) -> None:
 
 def detect_notable_paths(root: Path, report: dict[str, Any]) -> None:
     for name in (
-        ".gitnexus",
+        ".codelevelup",
         "Dockerfile",
         "compose.yaml",
         "compose.yml",
@@ -275,10 +254,9 @@ def main() -> int:
 def print_human_report(report: dict[str, Any]) -> None:
     print(f"Root: {report['root']}")
     print(f"Ecosystems: {', '.join(report['ecosystems']) or 'none detected'}")
-    print("\nGitNexus:")
-    print(f"- bootstrap: {report['gitnexus']['bootstrap_command']}")
-    for item in report["gitnexus"]["commands"]:
-        print(f"- {item['command']}  # {item['reason']}")
+    print("\nCode graph:")
+    print(f"- graph dir: {report['code_graph']['graph_dir']}")
+    print(f"- graph present: {report['code_graph']['graph_present']}")
     for title, key in (
         ("Setup", "setup_commands"),
         ("Verification", "verification_commands"),

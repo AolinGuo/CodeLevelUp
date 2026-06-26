@@ -1,39 +1,42 @@
 # CodeLevelUp
 
-CodeLevelUp is a local code upgrade assistant packaged as an agent skill, a CLI,
-and a stdio MCP server. It helps an agent inspect a repository, locate code,
-plan a small upgrade, run local verification, and prepare an intentional commit.
+CodeLevelUp is a skill-first local code self-upgrade and vulnerability repair
+project. Agents start from `skills/codelevelup/SKILL.md`, use the reference
+workflows to understand the target repository, build or approximate a local code
+graph, patch narrowly, verify locally, and prepare human review.
 
-CodeLevelUp 是一个本地代码自升级助手，提供 agent skill、CLI 和 stdio MCP
-三种入口。它用于帮助智能体检查仓库、定位代码、规划小步升级、在本地验证，并准备
-有边界的提交。
+CodeLevelUp 是一个以 agent skill 为主入口的本地代码自升级和漏洞修补项目。Agent
+先阅读 `skills/codelevelup/SKILL.md`，再按 reference 工作流理解目标仓库、构建或近似
+本地代码图、进行小步修改、本地验证，并准备人工审核。
 
 ## What It Provides / 能力范围
 
-- Agent skill instructions for code upgrade workflows.
-- Local CLI commands for project probing, code search, and upgrade preparation.
-- A stdio MCP server that Claude Desktop, Claude Code, Codex, or other MCP
-  clients can call locally.
-- Repository probing for Python, Node, Go, and Rust projects.
-- Local verification command discovery.
-- Security audit command suggestions.
-- A strict local-first workflow: dependencies and generated state stay inside
-  the target project sandbox.
+- A portable agent skill for code self-upgrade and vulnerability repair.
+- `AGENT_GUIDE.md` as the agent routing index; `SKILL.md` remains authoritative.
+- Local code graph guidance and optional helper support under `.codelevelup/`.
+- SCA repair flow: incremental scan, dependency fix, local verification, human
+  review before merge.
+- Self-upgrade flow: requirements gate, graph query, smallest patch,
+  verification, review.
+- Optional stdio MCP helper tools for agents that support MCP.
+- Skill-only fallback that uses `git`, `rg`, file reads, manifests, lockfiles,
+  and project-native verification commands.
 
-- 面向代码升级工作流的 agent skill 说明。
-- 面向项目探测、代码定位和升级准备的本地 CLI。
-- 可被 Claude Desktop、Claude Code、Codex 或其他 MCP 客户端本地调用的 stdio
-  MCP 服务。
-- 支持探测 Python、Node、Go、Rust 项目。
-- 自动发现本地验证命令。
-- 给出安全扫描命令建议。
-- 坚持本地优先：依赖和生成状态只放在目标项目的沙盒中。
+- 可迁移的代码自升级和漏洞修补 agent skill。
+- `AGENT_GUIDE.md` 作为 Agent 路由索引；真正权威契约仍是 `SKILL.md`。
+- 本地代码图工作流，以及写入 `.codelevelup/` 的可选 helper 状态。
+- SCA 修补流程：增量扫描、依赖修复、本地验证、人工审核合并。
+- 自升级流程：需求门禁、图查询、最小补丁、验证、审核。
+- 面向支持 MCP 的 Agent 的可选 stdio MCP helper。
+- 无 helper 时可用 skill-only 降级：使用 `git`、`rg`、文件阅读、manifest、lockfile
+  和项目原生命令。
 
-## Install / 安装
+## Install Optional Helper / 安装可选 Helper
 
-From this project directory:
+The skill itself does not require Python. Install the helper only when an agent
+needs local MCP tools:
 
-在当前项目目录执行：
+Skill 本身不要求 Python。只有当 Agent 需要本地 MCP 工具时才安装 helper：
 
 ```bash
 python3 -m venv .venv
@@ -42,184 +45,131 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-After installation:
+In restricted sandboxes:
 
-安装后可直接使用：
-
-```bash
-codelevelup --help
-codelevelup-mcp
-```
-
-The scripts also work without installation:
-
-也可以不安装，直接运行脚本：
+受限沙盒中：
 
 ```bash
-python scripts/codelevelup.py --help
-python scripts/codelevelup_mcp.py
+python -m pip install -e . --no-deps --no-build-isolation
 ```
 
-## CLI / 命令行
+Smoke test the single helper entry:
 
-Probe a target repository:
-
-探测目标仓库：
+烟测唯一 helper 入口：
 
 ```bash
-codelevelup probe --json /path/to/repo
+codelevelup-agent doctor --json
+codelevelup-agent mcp
 ```
 
-Search local source files:
+From a source checkout without install:
 
-搜索本地源码：
+不安装时可使用源码仓库 wrapper：
 
 ```bash
-codelevelup search /path/to/repo "target_symbol" --json
+bin/codelevelup-agent doctor --json
+bin/codelevelup-agent mcp
 ```
 
-## MCP / MCP 接入
+## Agent Entry / Agent 入口
 
-Run the local stdio MCP server:
+1. Read `AGENT_GUIDE.md`.
+2. Read `skills/codelevelup/SKILL.md`.
+3. Read `skills/codelevelup/references/agent-entry-layer.md`.
+4. Select the workflow reference:
+   - `code-graph-workflow.md`
+   - `graph-query-patterns.md`
+   - `self-upgrade-workflow.md`
+   - `vulnerability-remediation-workflow.md`
+   - `verification-review-workflow.md`
+5. Use MCP helper tools only as internal accelerators. Do not ask the user to
+   remember helper commands.
 
-运行本地 stdio MCP 服务：
+## Local State / 本地状态
 
-```bash
-codelevelup-mcp
-```
+When a run needs durable traceability, write artifacts inside the target
+repository:
 
-For Claude Desktop, copy and edit:
-
-Claude Desktop 可参考并修改：
+当一次运行需要可追踪状态时，将产物写入目标项目：
 
 ```text
-mcp/claude_desktop_config.example.json
+.codelevelup/
+├── graph/
+│   ├── graph.json
+│   ├── nodes.json
+│   └── edges.json
+├── runs/
+│   └── <run-id>/
+│       ├── request.json
+│       ├── findings.json
+│       ├── patch-plan.md
+│       ├── verification.json
+│       └── review.md
+└── policy.yaml
 ```
-
-Available MCP tools:
-
-可用 MCP 工具：
-
-- `probe_project`
-- `search_code`
-
-Additional code-search index tools are described in the next section.
-
-额外的代码搜寻索引工具见下一节。
-
-## Code Search / 代码搜寻
-
-The code search part references GitNexus-style graph-backed code location: first
-find the relevant files and symbols, then read source and check impact before
-editing. CodeLevelUp does not vendor GitNexus and is not a GitNexus fork. When a
-target repository already has GitNexus or you allow installing it in that
-project sandbox, CodeLevelUp can discover or preview:
-
-代码搜寻部分参考 GitNexus 的图谱化代码定位思路：先定位相关文件和符号，再阅读源码
-并检查影响范围，然后再修改。CodeLevelUp 不内置 GitNexus，也不是 GitNexus 的 fork。
-如果目标仓库已经配置 GitNexus，或你允许在该项目沙盒中安装它，CodeLevelUp 可以发现
-或预览：
-
-```bash
-codelevelup gitnexus status /path/to/repo --json
-codelevelup gitnexus analyze /path/to/repo --pdg --dry-run --json
-```
-
-MCP exposes the same optional code-search index helpers:
-
-MCP 也暴露同样的可选代码搜寻索引辅助工具：
-
-- `gitnexus_status`
-- `gitnexus_analyze_command`
-
-If that tooling is unavailable, use the built-in literal search and normal file
-reads, then state that no graph-backed audit was run.
-
-如果该工具不可用，就使用内置字面量搜索和普通文件阅读，并明确说明没有运行图谱审计。
 
 ## Project Structure / 项目结构
 
 ```text
 CodeLevelUp/
-├── README.md
-├── SKILL.md
+├── AGENT_GUIDE.md
 ├── AGENTS.md
 ├── CLAUDE.md
+├── README.md
+├── README_CN.md
+├── SKILL.md
 ├── pyproject.toml
-├── agents/
-│   └── openai.yaml
-├── mcp/
-│   └── claude_desktop_config.example.json
-├── references/
-│   ├── code-search-workflow.md
-│   └── upgrade-loop.md
-├── scripts/
-│   ├── codelevelup.py
-│   ├── codelevelup_mcp.py
-│   ├── probe_project.py
-│   ├── test_cli_mcp.py
-│   └── test_probe_project.py
-└── .gitignore
+├── bin/
+│   └── codelevelup-agent
+├── docs/
+│   ├── architecture.md
+│   ├── sca-workflow.md
+│   └── usage.md
+├── skills/
+│   └── codelevelup/
+│       ├── SKILL.md
+│       └── references/
+│           ├── agent-entry-layer.md
+│           ├── code-graph-workflow.md
+│           ├── code-search-workflow.md
+│           ├── graph-query-patterns.md
+│           ├── self-upgrade-workflow.md
+│           ├── upgrade-loop.md
+│           ├── verification-review-workflow.md
+│           └── vulnerability-remediation-workflow.md
+├── src/
+│   └── codelevelup/
+│       ├── agent.py
+│       ├── code_graph.py
+│       ├── mcp_server.py
+│       └── probe.py
+├── tests/
+├── tools/
+│   └── verify_skill_structure.py
+└── mcp/
+    └── claude_desktop_config.example.json
 ```
 
-- `SKILL.md`: agent-facing workflow contract.
-- `AGENTS.md`: portable agent instructions.
-- `CLAUDE.md`: Claude-specific CLI and MCP notes.
-- `pyproject.toml`: editable local install and console entry points.
-- `scripts/codelevelup.py`: local CLI implementation.
-- `scripts/codelevelup_mcp.py`: stdio MCP server implementation.
-- `scripts/probe_project.py`: project ecosystem and command detector.
-- `references/code-search-workflow.md`: optional graph-backed code search notes.
-- `references/upgrade-loop.md`: upgrade, verification, and commit loop.
-- `mcp/claude_desktop_config.example.json`: Claude Desktop MCP example.
+- `AGENT_GUIDE.md`: routing index for agents.
+- `skills/codelevelup/SKILL.md`: authoritative skill contract.
+- `skills/codelevelup/references/code-graph-workflow.md`: local graph build and
+  storage contract.
+- `skills/codelevelup/references/graph-query-patterns.md`: graph query patterns
+  for code understanding and impact lookup.
+- `src/codelevelup/`: optional helper implementation behind the skill.
+- `.codelevelup/`: target-project-local graph and run state.
 
-- `SKILL.md`：面向 agent 的工作流约束。
-- `AGENTS.md`：跨 agent 的通用说明。
-- `CLAUDE.md`：Claude 使用 CLI 和 MCP 的说明。
-- `pyproject.toml`：本地 editable 安装和命令入口。
-- `scripts/codelevelup.py`：本地 CLI 实现。
-- `scripts/codelevelup_mcp.py`：stdio MCP 服务实现。
-- `scripts/probe_project.py`：项目生态和命令探测器。
-- `references/code-search-workflow.md`：可选的图谱化代码搜寻说明。
-- `references/upgrade-loop.md`：升级、验证和提交循环。
-- `mcp/claude_desktop_config.example.json`：Claude Desktop MCP 配置示例。
+- `AGENT_GUIDE.md`：Agent 路由索引。
+- `skills/codelevelup/SKILL.md`：权威 skill 契约。
+- `skills/codelevelup/references/code-graph-workflow.md`：本地图构建和存储契约。
+- `skills/codelevelup/references/graph-query-patterns.md`：代码理解和影响分析的图查询模式。
+- `src/codelevelup/`：位于 skill 背后的可选 helper 实现。
+- `.codelevelup/`：目标项目内的图谱和运行状态目录。
 
 ## Validation / 验证
 
-Run the project checks:
-
-运行项目检查：
-
 ```bash
-python scripts/test_probe_project.py
-python scripts/test_cli_mcp.py
-python /Users/olym/.codex/skills/.system/skill-creator/scripts/quick_validate.py .
+PYTHONPATH=src python -m unittest discover -s tests
+python tools/verify_skill_structure.py
+python /Users/olym/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/codelevelup
 ```
-
-Smoke test CLI and MCP locally:
-
-本地烟测 CLI 和 MCP：
-
-```bash
-codelevelup probe --json /path/to/repo
-codelevelup search /path/to/repo "CodeLevelUp" --json
-codelevelup-mcp
-```
-
-## Upgrade Discipline / 升级纪律
-
-1. Inspect `git status --short` before editing.
-2. Probe the target repository.
-3. Locate relevant code and read source before patching.
-4. Make one scoped change.
-5. Run detected verification commands.
-6. Stage explicit files only.
-7. Commit with the reason and verification result.
-
-1. 修改前先检查 `git status --short`。
-2. 探测目标仓库。
-3. 先定位相关代码并阅读源码，再打补丁。
-4. 每次只做一个边界清晰的改动。
-5. 运行发现到的验证命令。
-6. 只暂存明确需要提交的文件。
-7. 提交信息写清原因和验证结果。

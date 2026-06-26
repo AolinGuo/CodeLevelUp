@@ -1,7 +1,7 @@
 interface:
   display_name: "CodeLevelUp"
-  short_description: "Level up local code with CLI and MCP support"
-  default_prompt: "Use $code-level-up to inspect this repo, locate the relevant code, plan a small upgrade, verify it locally, and commit."
+  short_description: "Level up local code with a skill-first entry layer plus optional CLI and MCP helpers"
+  default_prompt: "Use $code-level-up and skills/codelevelup/references/agent-entry-layer.md to inspect this repo, locate the relevant code, plan a small upgrade, verify it locally, and commit."
 
 policy:
   allow_implicit_invocation: true

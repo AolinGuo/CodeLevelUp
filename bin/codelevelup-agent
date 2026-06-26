@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT_DIR=$(dirname -- "$SCRIPT_DIR")
+
+if command -v python3 >/dev/null 2>&1; then
+  PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m codelevelup.agent "$@"
+fi
+
+if command -v python >/dev/null 2>&1; then
+  PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" exec python -m codelevelup.agent "$@"
+fi
+
+echo "CodeLevelUp CLI/MCP helpers require Python, but skill-only mode does not require Python." >&2
+echo "Read: $ROOT_DIR/SKILL.md and $ROOT_DIR/references/agent-entry-layer.md" >&2
+exit 127

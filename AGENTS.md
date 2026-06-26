@@ -1,20 +1,16 @@
-# CodeLevelUp Agent Guide
+# CodeLevelUp Agent Notes
 
-Use CodeLevelUp as a local upgrade assistant with three portable entrypoints:
+Use CodeLevelUp as a skill-first project.
 
-- Codex skill: read `SKILL.md` and invoke `$code-level-up`.
-- CLI: run `python scripts/codelevelup.py --help` or the installed `codelevelup`.
-- MCP: run `python scripts/codelevelup_mcp.py` or the installed
-  `codelevelup-mcp` as a stdio MCP server.
+1. Read `AGENT_GUIDE.md`.
+2. Read `skills/codelevelup/SKILL.md`.
+3. Read `skills/codelevelup/references/agent-entry-layer.md`.
+4. Build or approximate the local code graph before code self-upgrade or
+   vulnerability repair.
+5. Store durable artifacts under the target repository's `.codelevelup/`
+   directory when traceability is needed.
+6. Use optional MCP helper tools as implementation details only.
 
-Before editing a target repository:
-
-1. Run `python scripts/codelevelup.py probe --json <target-repo>`.
-2. Use `python scripts/codelevelup.py search <target-repo> <query> --json` to locate code.
-3. If GitNexus is available or desired, inspect `gitnexus status` and run `gitnexus analyze`.
-4. Patch one narrow change.
-5. Run the detected verification commands.
-6. Stage explicit files only and commit with verification evidence.
-
-Do not treat search results or optional index summaries as replacements for
-reading the source files involved in the change.
+Do not ask users to remember helper commands. Do not run implementation modules
+from `src/` directly. Search and graph output are locators; read source files
+before editing.

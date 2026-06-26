@@ -1,38 +1,22 @@
 # CodeLevelUp For Claude
 
-This repository is not Codex-only. Claude can use CodeLevelUp through CLI or
-MCP after a local editable install:
+Claude should use CodeLevelUp as a skill-first project:
+
+1. Read `AGENT_GUIDE.md`.
+2. Read `skills/codelevelup/SKILL.md`.
+3. Read `skills/codelevelup/references/agent-entry-layer.md`.
+4. Use skill-only mode by default, or run `codelevelup-agent mcp` when an MCP
+   client is configured.
+
+Optional local helper install:
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e .
+python -m pip install -e . --no-deps --no-build-isolation
+codelevelup-agent doctor --json
 ```
 
-## CLI
-
-```bash
-codelevelup probe --json /path/to/repo
-codelevelup search /path/to/repo "target_symbol" --json
-codelevelup gitnexus status /path/to/repo --json
-codelevelup gitnexus analyze /path/to/repo --dry-run --json
-```
-
-## MCP
-
-Configure Claude Desktop or another MCP client to run:
-
-```bash
-/absolute/path/to/CodeLevelUp/.venv/bin/codelevelup-mcp
-```
-
-The MCP server exposes:
-
-- `probe_project`
-- `search_code`
-- `gitnexus_status`
-- `gitnexus_analyze_command`
-
-Use these tools before editing when you need local repository orientation,
-literal code search, or GitNexus command discovery.
+The MCP server exposes project probing, local code graph build/query, and
+fallback source search tools. Treat those tools as internal accelerators behind
+the skill, not as user-facing commands.

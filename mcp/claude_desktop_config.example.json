@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "codelevelup": {
-      "command": "/absolute/path/to/CodeLevelUp/.venv/bin/codelevelup-mcp",
-      "args": []
+      "command": "/absolute/path/to/CodeLevelUp/.venv/bin/codelevelup-agent",
+      "args": ["mcp"]
     }
   }
 }
